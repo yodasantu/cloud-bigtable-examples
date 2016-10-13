@@ -25,8 +25,8 @@
 
   <properties>
     <bigtable.zone>us-central1-b</bigtable.zone>
-    <bigtable.version>0.3.0</bigtable.version>
-    <hbase.version>1.2.1</hbase.version>
+    <bigtable.version>0.9.3</bigtable.version>
+    <hbase.version>1.2.3</hbase.version>
     <maven.compiler.target>1.8</maven.compiler.target>
     <maven.compiler.source>1.8</maven.compiler.source>
   </properties>
@@ -91,7 +91,7 @@
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-tcnative-boringssl-static</artifactId>
-      <version>1.1.33.Fork13</version>
+      <version>1.1.33.Fork19</version>
       <classifier>${os.detected.classifier}</classifier>
     </dependency>
   </dependencies>

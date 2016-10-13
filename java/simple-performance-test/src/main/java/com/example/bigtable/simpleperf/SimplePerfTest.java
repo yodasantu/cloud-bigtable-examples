@@ -19,7 +19,7 @@ public class SimplePerfTest {
   public static void main(String[] args) throws NumberFormatException, IOException {
     Preconditions.checkArgument(args.length == 7,
       "Usage: [type of test: just 'local-write' for now] [project id] [zone] [cluster id] [table] [row count] [value size]");
-    WritePerfTest.writeTestData(args[1], args[2], args[3], TableName.valueOf(args[4]),
-      Long.parseLong(args[5]), Integer.parseInt(args[6]));
+    WritePerfTest.writeTestData(args[1], args[2], TableName.valueOf(args[4]), Long.parseLong(args[5]),
+      Integer.parseInt(args[6]));
   }
 }
