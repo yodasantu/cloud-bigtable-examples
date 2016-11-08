@@ -16,6 +16,9 @@
 
 package com.example.bigtable.loadbooks;
 
+import com.google.cloud.dataflow.sdk.transforms.Sum;
+import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
 import com.google.cloud.bigtable.dataflow.CloudBigtableIO;
 import com.google.cloud.bigtable.dataflow.CloudBigtableOptions;
 import com.google.cloud.bigtable.dataflow.CloudBigtableTableConfiguration;
@@ -25,11 +28,15 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Filter;
 import com.google.cloud.dataflow.sdk.transforms.FlatMapElements;
 import com.google.cloud.dataflow.sdk.transforms.MapElements;
+import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.TypeDescriptor;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -55,6 +62,29 @@ public class LoadBooks {
     void setInputFile(String location);
   }
 
+  /**
+   * Returns the word from a {@code wordDetail}.
+   *
+   * <p>A word detail from the books dataset looks like {@code word/NN/part/2}.  This
+   * extracts just the word, ignoring the part of speech and other details.
+   */
+  private static String getWord(String wordDetail) {
+    Iterable<String> detailParts = Splitter.on("/").split(wordDetail);
+    return detailParts.iterator().next();
+  }
+
+  /**
+   * Returns the key used for an {@code ngram}.
+   *
+   * <p>The n-gram includes data such as the part of speech, which is not desired in the key.  This
+   * removes everything but the words, leaving an n-gram of words separated by spaces.
+   */
+  private static String getKey(String ngram) {
+    List<String> wordDetails = Splitter.on(" ").splitToList(ngram);
+    List<String> words = wordDetails.stream().map(LoadBooks::getWord).collect(Collectors.toList());
+    return Joiner.on(" ").join(words);
+  }
+
   public static void main(String[] args) {
     // CloudBigtableOptions is one way to retrieve the options.  It's not required.
     // https://github.com/GoogleCloudPlatform/cloud-bigtable-examples/blob/master/java/dataflow-connector-examples/src/main/java/com/google/cloud/bigtable/dataflow/example/HelloWorldWrite.java
@@ -63,29 +93,32 @@ public class LoadBooks {
     CloudBigtableTableConfiguration config =
         CloudBigtableTableConfiguration.fromCBTOptions(options);
 
-    final String columnSeparator;
-    if (options.getColumnSeparator() == null) {
-      columnSeparator = "\t"; // ","
-    } else {
-      columnSeparator = options.getColumnSeparator();
-    }
-
     Pipeline p = Pipeline.create(options);
 
     CloudBigtableIO.initializeForWrite(p);
 
-    p.apply(TextIO.Read.from(options.getInputFile()))
+    p
+        .apply(TextIO.Read.from(options.getInputFile()))
         .apply(
-            FlatMapElements.via((String doc) -> Arrays.asList(doc.split("\n")))
+            FlatMapElements.via((String doc) -> Splitter.on("\n").split(doc))
                 .withOutputType(new TypeDescriptor<String>() {}))
         .apply(Filter.byPredicate((String line) -> !line.isEmpty()))
-
         .apply(
             MapElements.via(
-                    (String line) -> {
-                      String[] elements = line.split(columnSeparator);
-                      byte[] key = elements[1].getBytes(STRING_ENCODING);
-                      int count = Integer.parseInt(elements[2]);
+                (String line) -> {
+                  List<String> elements = Splitter.on("\t").splitToList(line);
+                  String ngram = elements.get(1);
+                  String key = getKey(ngram);
+                  Integer count = Integer.parseInt(elements.get(2));
+                  return KV.<String, Integer>of(key, count);
+                })
+                .withOutputType(new TypeDescriptor<KV<String, Integer>>() {}))
+        .apply(Sum.integersPerKey())
+        .apply(
+            MapElements.via(
+                    (KV<String, Integer> ngram) -> {
+                      byte[] key = ngram.getKey().getBytes(STRING_ENCODING);
+                      int count = ngram.getValue();
 
                       // The byte order of a newly-created byte buffer is
                       // always big endian (network byte order).

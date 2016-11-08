@@ -83,20 +83,6 @@ public class LoadBooksIT {
   @Test
   public void main_writesBigtable() throws Exception {
     Connection connection = bigtableConnection;
-    // [START connecting_to_bigtable]
-    // Create the Bigtable connection, use try-with-resources to make sure it gets closed
-
-      // The admin API lets us create, manage and delete tables
-      Admin admin = connection.getAdmin();
-      // [END connecting_to_bigtable]
-
-      // [START creating_a_table]
-      // Create a table with a single column family
-      HTableDescriptor descriptor = new HTableDescriptor(TableName.valueOf(TABLE_NAME));
-      descriptor.addFamily(new HColumnDescriptor(COLUMN_FAMILY_NAME));
-
-      admin.createTable(descriptor);
-      // [END creating_a_table]
 
       // [START writing_rows]
       // Retrieve the table we just created so we can do some reads and writes
@@ -144,11 +130,5 @@ public class LoadBooksIT {
         System.out.println('\t' + Bytes.toString(valueBytes));
       }
       // [END scanning_all_rows]
-
-      // // [START deleting_a_table]
-      // // Clean up by disabling and then deleting the table
-      // admin.disableTable(table.getName());
-      // admin.deleteTable(table.getName());
-      // // [END deleting_a_table]
   }
 }

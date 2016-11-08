@@ -39,5 +39,16 @@ The Cloud Storage location should be entered in the form of
 
 ## Running the tests
 
-gcloud beta emulators bigtable start &
-$(gcloud beta emulators bigtable env-init)
+Start the emulator.
+
+    gcloud beta emulators bigtable start &
+    $(gcloud beta emulators bigtable env-init)
+
+Create the test table.
+
+    cbt -project ignored -instance ignored createtable helloworld
+    cbt -project ignored -instance ignored createfamily helloworld cf1
+
+Run the tests.
+
+    mvn clean verify
